@@ -1,162 +1,82 @@
-!-- ...existing code... -->
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Rickzz Chatbot</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css" />
-
-  <!-- small page-specific enhancements (animations) -->
-  <style>
-    /* card entrance */
-    .card { transform: translateY(8px) scale(.995); opacity: 0; transition: transform .6s cubic-bezier(.16,.84,.44,1), opacity .6s; }
-    .is-ready .card { transform: translateY(0) scale(1); opacity: 1; }
-
-    /* logo pulse */
-    .logo { animation: logoPulse 3.6s ease-in-out infinite; }
-    @keyframes logoPulse {
-      0%,100% { transform: scale(1); box-shadow: 0 6px 18px rgba(79,70,229,0.12); }
-      50% { transform: scale(1.04); box-shadow: 0 14px 40px rgba(79,70,229,0.18); }
-    }
-
-    /* message reveal */
-    .fade-in { animation: msgIn .36s cubic-bezier(.2,.9,.3,1); }
-    @keyframes msgIn {
-      0% { transform: translateY(8px); opacity: 0; filter: blur(6px); }
-      100% { transform: translateY(0); opacity: 1; filter: blur(0); }
-    }
-
-    /* subtle send button micro-interaction */
-    .composer button svg { transition: transform .14s ease; }
-    .composer button:active svg { transform: translateX(2px) rotate(6deg) scale(.98); }
-  </style>
 </head>
 <body>
-  <main class="page">
-    <section class="card" role="region" aria-label="Chat interface">
-      <header class="card-header">
-        <div class="brand" aria-hidden="false">
-          <div class="logo" aria-hidden="true">R</div>
-          <div>
-            <h1>Rickzz</h1>
-            <p class="muted">Smart assistant — fast, friendly, helpful.</p>
-          </div>
+  <div class="chat-card">
+    <div class="card-header">
+      <div class="brand">
+        <div class="logo">AI</div>
+        <div>
+          <h1>rickzz Chatbot</h1>
+          <p class="muted">Powered by Mistral-7B</p>
         </div>
+      </div>
+      <div class="status">🟢 Online</div>
+    </div>
 
-        <div style="display:flex;gap:10px;align-items:center">
-          <div class="status" aria-live="polite">Online</div>
+    <div id="chat" class="chat"></div>
 
-          <!-- options (non-functional placeholder for future) -->
-          <button title="Theme" aria-label="Theme" style="background:transparent;border:0;padding:6px;border-radius:8px;cursor:pointer">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"></path></svg>
-          </button>
-        </div>
-      </header>
-
-      <div id="chat" class="chat" aria-live="polite" aria-atomic="false"></div>
-
-      <form id="chat-form" class="composer" autocomplete="off" aria-label="Send a message">
-        <input id="message" name="message" type="text" placeholder="Ask me anything..." aria-label="Message input" />
-        <button type="submit" aria-label="Send message">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"></path><path d="M22 2l-7 20 1-7 7-13z"></path></svg>
-        </button>
-      </form>
-    </section>
-  </main>
+    <form id="chat-form" class="composer">
+      <input id="message" type="text" autocomplete="off" placeholder="Type a message..." />
+      <button type="submit">Send</button>
+    </form>
+  </div>
 
   <script>
-    // ...existing code...
-    document.documentElement.classList.remove('no-js');
-    document.addEventListener('DOMContentLoaded', () => {
-      // smooth entrance
-      requestAnimationFrame(()=> document.body.classList.add('is-ready'));
+    const form = document.getElementById('chat-form');
+    const chat = document.getElementById('chat');
+    const input = document.getElementById('message');
 
-      const form = document.getElementById('chat-form');
-      const chat = document.getElementById('chat');
-      const input = document.getElementById('message');
+    function createMessage(role, text) {
+      const row = document.createElement('div');
+      row.className = 'message-row ' + role;
 
-      function addMessage(role, text) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'message-row ' + role;
+      const bubble = document.createElement('div');
+      bubble.className = 'message ' + role;
+      bubble.textContent = text;
 
-        const bubble = document.createElement('div');
-        bubble.className = 'message ' + role + ' fade-in';
-        bubble.textContent = text;
+      row.appendChild(bubble);
+      chat.appendChild(row);
+      chat.scrollTop = chat.scrollHeight;
+    }
 
-        const time = document.createElement('span');
-        time.className = 'time muted';
-        const now = new Date();
-        time.textContent = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    function showTyping() {
+      const row = document.createElement('div');
+      row.className = 'message-row assistant typing-row';
+      row.innerHTML = `<div class="message typing"><span></span><span></span><span></span></div>`;
+      chat.appendChild(row);
+      chat.scrollTop = chat.scrollHeight;
+      return row;
+    }
 
-        wrapper.appendChild(bubble);
-        wrapper.appendChild(time);
-        chat.appendChild(wrapper);
-        chat.scrollTop = chat.scrollHeight;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+      createMessage('user', message);
+      input.value = '';
 
-        // remove fade class after animation to avoid stacking
-        bubble.addEventListener('animationend', ()=> bubble.classList.remove('fade-in'), {once:true});
+      const typing = showTyping();
+
+      try {
+        const res = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+        const data = await res.json();
+        typing.remove();
+        createMessage('assistant', data.reply);
+      } catch (err) {
+        typing.remove();
+        createMessage('assistant', '⚠️ Error: ' + err.message);
       }
-
-      function setTyping(on) {
-        let el = document.getElementById('typing-indicator');
-        if (on) {
-          if (!el) {
-            el = document.createElement('div');
-            el.id = 'typing-indicator';
-            el.className = 'message-row assistant';
-            el.innerHTML = '<div class="message assistant typing"><span></span><span></span><span></span></div>';
-            chat.appendChild(el);
-            chat.scrollTop = chat.scrollHeight;
-          }
-        } else if (el) {
-          el.remove();
-        }
-      }
-
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const message = input.value.trim();
-        if (!message) return;
-        input.value = '';
-        input.disabled = true;
-        addMessage('user', message);
-
-        setTyping(true);
-        try {
-          const res = await fetch('/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
-          });
-          const data = await res.json();
-          setTyping(false);
-          addMessage('assistant', data.reply || 'No response');
-        } catch (err) {
-          setTyping(false);
-          addMessage('assistant', 'Error: ' + (err.message || 'Network error'));
-        } finally {
-          input.disabled = false;
-          input.focus();
-        }
-      });
-
-      // allow Enter to send, Shift+Enter for newline
-      input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          form.requestSubmit();
-        }
-      });
-
-      // initial welcome
-      addMessage('assistant', 'Hi! I\'m Rickzz. Ask me anything.');
-
-      // ensure focus for fast typing on load
-      setTimeout(()=> input.focus(), 600);
     });
   </script>
 </body>
 </html>
-<!-- ...existing code... -->
